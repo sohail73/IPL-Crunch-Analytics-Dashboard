@@ -41,22 +41,38 @@ match_level = df.drop_duplicates(
 st.title("IPL Crunch Analytics Dashboard")
 
 st.markdown("""
-### Advanced Cricket Analytics Platform
-
 Explore IPL trends, match-winning patterns,
 batting dominance, bowling impact,
 venue intelligence, and advanced insights.
 """)
 
 st.divider()
-
-# KPI SECTION
+# Data Preprocessing
+#total matches
 total_matches = match_level['match_id'].nunique()
 
-total_teams = len(pd.unique(df[['team1', 'team2']].values.ravel()))
+#total teams
+team_cleaner={
+    'Rising Pune Supergiants': 'Rising Pune Supergiant',
+    'Delhi Daredevils': 'Delhi Capitals',
+    'Kings XI Punjab': 'Punjab Kings',
+    'Royal Challengers Bangalore': 'Royal Challengers Bengaluru'
+}
+df['team1']=df['team1'].replace(team_cleaner)
+df['team2']=df['team2'].replace(team_cleaner)
+total_teams = len(pd.unique(df[['team1','team2']].stack().drop_duplicates()))
 
-total_seasons = df['season'].nunique()
+# total seasons
+season_map = {
+    '2007/08': 2008,
+    '2009/10': 2010,
+    '2020/21': 2020
+}
+df['season'] = df['season'].replace(season_map)
+df['season'] =df['season'].astype(int)
+total_seasons = len(sorted(df['season'].unique()))
 
+# highest score
 highest_score = df.groupby(
     ['match_id', 'batting_team']
 )['runs_total'].sum().max()
@@ -77,7 +93,7 @@ with col2:
 
 with col3:
     st.metric(
-        "Seasons",
+        "Total Seasons",
         total_seasons
     )
 
@@ -89,26 +105,15 @@ with col4:
 st.divider()
 
 # TOSS IMPACT OVERVIEW
-st.subheader("Toss Impact Overview")
 
-toss_win_matches = match_level[
-    match_level['toss_winner']
-    ==
-    match_level['winner']
-]
+df['toss_and_match_win'] = df['toss_winner'] == df['winner']
 
-toss_win_percentage = round(
-    (
-        toss_win_matches.shape[0]
-        /
-        match_level.shape[0]
-    ) * 100,
-    2
-)
-col1, col2 = st.columns(2)
+toss_win_percentage = df['toss_and_match_win'].mean() * 100
+col1, col2, col3 = st.columns([2,2,2])
 
+# ---------------- PIE CHART ---------------- #
 with col1:
-
+    st.markdown("#### Toss Winner Match Success")
     fig = go.Figure(data=[
         go.Pie(
             labels=[
@@ -122,13 +127,13 @@ with col1:
             hole=0.45
         )
     ])
-    fig.update_layout(
-        title="Toss Winner Match Success"
-    )
 
     st.plotly_chart(fig, use_container_width=True)
 
+
+# ---------------- BAR CHART ---------------- #
 with col2:
+    st.markdown("#### Toss Decisions")
     toss_decision = match_level[
         'toss_decision'
     ].value_counts()
@@ -136,7 +141,6 @@ with col2:
     fig2 = px.bar(
         x=toss_decision.index,
         y=toss_decision.values,
-        title="Toss Decisions",
         labels={
             'x': 'Decision',
             'y': 'Count'
@@ -145,15 +149,36 @@ with col2:
 
     st.plotly_chart(fig2, use_container_width=True)
 
-st.info(
-    f"Teams winning the toss won "
-    f"{toss_win_percentage}% matches overall."
-)
+# ---------------- PLAYER CARD ---------------- #
+with col3:
+
+    st.markdown("#### Top Run Scorer")
+
+    c1, c2 = st.columns([2,1])
+
+    with c1:
+        st.image(
+            "virat.png"
+        )
+
+    with c2:
+        st.markdown("### VIRAT KOHLI")
+        st.markdown("### 9050 Runs")
+        st.markdown("Matches: 269")
+        st.markdown("Average: 40.04")
+
+#insights
+st.subheader("Insight")
+st.info("""
+- Winning the toss does not guarantee match victory. IPL matches remain highly competitive regardless of toss outcome.
+- Teams mostly prefer bowling first, showing a strong chasing trend in modern IPL seasons.
+- Virat Kohli remains the highest run scorer in IPL history with remarkable consistency across seasons.
+""")
 
 st.divider()
 
 # TOP BATTERS
-st.subheader("Top Batters")
+st.subheader("Top 10 IPL Run Scorers")
 
 top_batters = df.groupby(
     'batter'
@@ -166,7 +191,6 @@ fig3 = px.bar(
     x=top_batters.values,
     y=top_batters.index,
     orientation='h',
-    title="Top 10 IPL Run Scorers",
     labels={
         'x': 'Runs',
         'y': 'Batter'
@@ -178,7 +202,7 @@ st.plotly_chart(fig3, use_container_width=True)
 st.divider()
 
 # TOP BOWLERS
-st.subheader("Top Bowlers")
+st.subheader("Top IPL Wicket Takers")
 
 wickets = df[
     df['wicket_kind'].notna()
@@ -194,7 +218,6 @@ fig4 = px.bar(
     top_bowlers,
     x=top_bowlers.index,
     y=top_bowlers.values,
-    title="Top IPL Wicket Takers",
     labels={
         'x': 'Bowler',
         'y': 'Wickets'
@@ -202,12 +225,15 @@ fig4 = px.bar(
 )
 
 st.plotly_chart(fig4, use_container_width=True)
-
+st.info("""
+- Spin bowlers and death-over specialists dominate the IPL wicket charts, showing the importance of variation and consistency in T20 cricket
+- Yuzvendra Chahal leads the wicket charts, proving the long-term impact  of quality spin bowling in IPL history
+""")
 st.divider()
 
 # VENUE OVERVIEW
 
-st.subheader("Venue Overview")
+st.subheader("Top IPL Venues")
 
 venue_counts = match_level[
     'venue'
@@ -218,7 +244,6 @@ fig5 = px.bar(
     x=venue_counts.values,
     y=venue_counts.index,
     orientation='h',
-    title="Top IPL Venues",
     labels={
         'x': 'Matches Hosted',
         'y': 'Venue'
@@ -227,6 +252,7 @@ fig5 = px.bar(
 
 st.plotly_chart(fig5, use_container_width=True)
 
+st.info("- Eden Gardens has hosted the highest number of IPL matches, making it one of the league's most iconic venues.")
 st.divider()
 
 # QUICK INSIGHTS

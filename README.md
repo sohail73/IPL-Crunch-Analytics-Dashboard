@@ -87,4 +87,3 @@ This project analyzes match trends, player performance, venue behavior, toss imp
 Built by Sohail Khan
 
 Data Analytics & Cricket Insights Project
-
