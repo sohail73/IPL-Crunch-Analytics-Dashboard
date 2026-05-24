@@ -31,40 +31,63 @@ def load_data():
     return pd.read_csv('data/ipl_crunch_data.csv')
 df = load_data()
 
-# GET GLOBAL FILTERS
+# Milte-julte naamo ko merge karne ke liye cleaning map
+venue_cleaner = {
+    # Mumbai
+    'Wankhede Stadium, Mumbai': 'Wankhede Stadium',
+    'Dr DY Patil Sports Academy, Mumbai': 'Dr DY Patil Sports Academy',
+    'Brabourne Stadium, Mumbai': 'Brabourne Stadium',
 
-selected_season = st.session_state.get(
-    "selected_season",
-    "All"
-)
+    # Bengaluru
+    'M Chinnaswamy Stadium': 'M. Chinnaswamy Stadium',
+    'M.Chinnaswamy Stadium': 'M. Chinnaswamy Stadium',
+    'M Chinnaswamy Stadium, Bengaluru': 'M. Chinnaswamy Stadium',
 
-selected_team = st.session_state.get(
-    "selected_team",
-    "All"
-)
+    # Chennai
+    'MA Chidambaram Stadium': 'M.A. Chidambaram Stadium, Chepauk',
+    'MA Chidambaram Stadium, Chepauk, Chennai': 'M.A. Chidambaram Stadium, Chepauk',
+    'MA Chidambaram Stadium, Chepauk': 'M.A. Chidambaram Stadium, Chepauk',
 
-# APPLY GLOBAL FILTERS
-filtered_df = df.copy()
+    # Delhi
+    'Feroz Shah Kotla': 'Arun Jaitley Stadium',
+    'Arun Jaitley Stadium, Delhi': 'Arun Jaitley Stadium',
 
-# Season Filter
-if selected_season != "All":
-    filtered_df = filtered_df[
-        filtered_df['season']
-        == selected_season
-    ]
+    # Hyderabad
+    'Rajiv Gandhi International Stadium': 'Rajiv Gandhi International Stadium, Uppal',
+    'Rajiv Gandhi International Stadium, Uppal, Hyderabad': 'Rajiv Gandhi International Stadium, Uppal',
 
-# Team Filter
-if selected_team != "All":
-    filtered_df = filtered_df[
-        (filtered_df['team1'] == selected_team)
-        |
-        (filtered_df['team2'] == selected_team)
-    ]
+    # Kolkata
+    'Eden Gardens, Kolkata': 'Eden Gardens',
+
+    # Mohali / Mullanpur
+    'Punjab Cricket Association Stadium, Mohali': 'PCA IS Bindra Stadium, Mohali',
+    'Punjab Cricket Association IS Bindra Stadium, Mohali': 'PCA IS Bindra Stadium, Mohali',
+    'Punjab Cricket Association IS Bindra Stadium': 'PCA IS Bindra Stadium, Mohali',
+    'Punjab Cricket Association IS Bindra Stadium, Mohali, Chandigarh': 'PCA IS Bindra Stadium, Mohali',
+    'Maharaja Yadavindra Singh International Cricket Stadium, New Chandigarh': 'Maharaja Yadavindra Singh Stadium, Mullanpur',
+    'Maharaja Yadavindra Singh International Cricket Stadium, Mullanpur': 'Maharaja Yadavindra Singh Stadium, Mullanpur',
+
+    # Pune
+    'Maharashtra Cricket Association Stadium, Pune': 'Maharashtra Cricket Association Stadium',
+
+    # Jaipur
+    'Sawai Mansingh Stadium, Jaipur': 'Sawai Mansingh Stadium',
+
+    # Vizag
+    'Dr. Y.S. Rajasekhara Reddy ACA-VDCA Cricket Stadium, Visakhapatnam': 'Dr. Y.S. Rajasekhara Reddy ACA-VDCA Stadium',
+    'Dr. Y.S. Rajasekhara Reddy ACA-VDCA Cricket Stadium': 'Dr. Y.S. Rajasekhara Reddy ACA-VDCA Stadium',
+
+    # Ahmedabad
+    'Sardar Patel Stadium, Motera': 'Narendra Modi Stadium, Ahmedabad',
+
+    # Abu Dhabi
+    'Zayed Cricket Stadium, Abu Dhabi': 'Sheikh Zayed Stadium'
+}
+
+df['venue'] = df['venue'].replace(venue_cleaner).str.strip()
+
 # MATCH LEVEL DATA
-
-match_level = filtered_df.drop_duplicates(
-    subset='match_id'
-)
+match_level = df.drop_duplicates(subset='match_id')
 
 # PAGE TITLE
 st.title("Toss Impact Analysis")
@@ -76,9 +99,7 @@ match outcomes across IPL seasons.
 st.divider()
 
 # PAGE FILTERS
-venues = sorted(
-    match_level['venue'].dropna().unique()
-)
+venues = sorted(df['venue'].unique())
 
 selected_venue = st.selectbox(
     "Select Venue",
@@ -86,64 +107,28 @@ selected_venue = st.selectbox(
 )
 # APPLY VENUE FILTER
 if selected_venue != "All":
-    match_level = match_level[
-        match_level['venue']
-        == selected_venue
-    ]
+    match_level = match_level[match_level['venue'] == selected_venue]
 
 # KPI SECTION
 total_matches = match_level.shape[0]
 
-toss_win_matches = match_level[
-    match_level['toss_winner']
-    ==
-    match_level['winner']
-]
+match_level['toss_and_match_win'] = match_level['toss_winner'] == match_level['winner']
+toss_win_percentage = match_level['toss_and_match_win'].mean() * 100
 
-toss_win_percentage = round(
-    (
-        toss_win_matches.shape[0]
-        /
-        total_matches
-    ) * 100,
-    2
-)
+bat_first_wins = match_level[match_level['toss_decision']== 'bat'].shape[0]
 
-bat_first_wins = match_level[
-    match_level['toss_decision']
-    == 'bat'
-].shape[0]
+field_first_wins = match_level[match_level['toss_decision']== 'field'].shape[0]
 
-field_first_wins = match_level[
-    match_level['toss_decision']
-    == 'field'
-].shape[0]
-
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.metric(
-        "Matches",
-        total_matches
-    )
+    st.metric("Matches",total_matches)
 
 with col2:
-    st.metric(
-        "Toss Win Match %",
-        f"{toss_win_percentage}%"
-    )
+    st.metric("Bat First Decisions",bat_first_wins)
 
 with col3:
-    st.metric(
-        "Bat First Decisions",
-        bat_first_wins
-    )
-
-with col4:
-    st.metric(
-        "Field First Decisions",
-        field_first_wins
-    )
+    st.metric("Field First Decisions",field_first_wins)
 
 st.divider()
 
@@ -194,6 +179,8 @@ with col2:
     st.plotly_chart(fig2, use_container_width=True)
 
 st.divider()
+
+
 # VENUE-WISE TOSS IMPACT
 st.subheader("Venue-wise Toss Impact")
 
@@ -228,26 +215,23 @@ st.plotly_chart(fig3, use_container_width=True)
 st.divider()
 
 # SEASON-WISE TOSS IMPACT
+season_map = {
+    '2007/08': 2008,
+    '2009/10': 2010,
+    '2020/21': 2020
+}
+match_level['season'] = match_level['season'].replace(season_map)
+match_level['season'] =match_level['season'].astype(int)
+
 st.subheader("Season-wise Toss Impact")
 
-season_toss = match_level.groupby(
-    'season'
-).apply(
-    lambda x: (
-        (
-            x['toss_winner']
-            ==
-            x['winner']
-        ).mean()
-    ) * 100
-).reset_index(name='win_percentage')
+season_toss = match_level.groupby('season').apply(lambda x: ((x['toss_winner']==x['winner']).mean()) * 100).reset_index(name='win_percentage')
 
 fig4 = px.line(
     season_toss,
     x='season',
     y='win_percentage',
-    markers=True,
-    title="Toss Impact Across Seasons"
+    markers=True
 )
 
 st.plotly_chart(fig4, use_container_width=True)
@@ -255,18 +239,17 @@ st.plotly_chart(fig4, use_container_width=True)
 st.divider()
 
 # TEAM-WISE TOSS PERFORMANCE
-st.subheader("Team-wise Toss Success")
+team_cleaner = {
+    'Rising Pune Supergiants': 'Rising Pune Supergiant',
+    'Delhi Daredevils': 'Delhi Capitals',
+    'Kings XI Punjab': 'Punjab Kings',
+    'Royal Challengers Bangalore': 'Royal Challengers Bengaluru'
+}
+match_level['toss_winner'] = match_level['toss_winner'].replace(team_cleaner)
+match_level['winner'] = match_level['winner'].replace(team_cleaner)
+match_level['toss_match_win'] = match_level['toss_winner'] == match_level['winner']
 
-match_level['toss_match_win'] = (
-    match_level['toss_winner'] == match_level['winner']
-)
-
-team_toss = (
-    match_level.groupby('toss_winner')['toss_match_win']
-    .mean()
-    .mul(100)
-    .sort_values(ascending=False)
-)
+team_toss = (match_level.groupby('toss_winner')['toss_match_win'].mean().mul(100).sort_values(ascending=False))
 
 fig5 = px.bar(
     team_toss,
@@ -282,29 +265,41 @@ fig5 = px.bar(
 st.plotly_chart(fig5, use_container_width=True)
 
 st.divider()
+
 # INSIGHTS
+
 st.subheader("Key Insights")
 
+# 1. Logic to identify the dominant trend (Decisions based)
+if bat_first_wins > field_first_wins:
+    pref_statement = f"captains prefer to **Bat First** after winning the toss at this venue ({bat_first_wins} times)."
+else:
+    pref_statement = f"captains heavily prefer to **Field First (Chase)** after winning the toss at this venue ({field_first_wins} times)."
+
+# 2. Strongest team on this venue (Highest toss-to-win conversion)
+if len(team_toss) > 0:
+    top_team = team_toss.index[0]
+    top_team_pct = round(team_toss.values[0], 1)
+    team_statement = f"**{top_team}** has capitalized best on toss advantages in this segment, boasting a Toss-to-Match conversion rate of **{top_team_pct}%**."
+else:
+    team_statement = "Toss conversion analytics are processing based on the applied data filters."
+
+# 3. Streamlit Display Card UI (Aligned with the dark theme layout)
 st.success(f"""
-• Teams winning the toss won {toss_win_percentage}% matches.
+- **Overall Toss Advantage:** Under the **{selected_venue}** filter context, teams winning the toss have a match-winning probability of **{toss_win_percentage}%**. 
 
-• Toss impact varies significantly across venues.
+- **Captain's Mindset:** According to historical data, {pref_statement}
 
-• Chasing decisions are generally preferred in IPL.
+- **Team Dominance:** {team_statement}
 
-• Certain teams convert toss advantages more effectively.
-
-• Toss influence changes across seasons due to evolving strategies.
+- **Tactical Shift:** Due to modern dynamic ground dimensions, dew factors, and tactical shifts in the ongoing IPL 2026 season, the dominance of chasing teams has risen significantly.
 """)
 
 st.divider()
+
 # CONCLUSION
-
 st.subheader("Conclusion")
-
-st.markdown("""
-Toss advantage exists in IPL, but it is not the
-sole deciding factor. Venue conditions,
-team strength, and match execution often
-have greater influence on outcomes.
+st.markdown(f"""
+While toss advantages definitely play a measurable role at **{selected_venue}**, they are rarely the sole deciding factor of a fixture. 
+On-field execution, powerplay bowling lengths, boundary defense metrics, and tactical adaptability ultimately dictate final match outcomes.
 """)

@@ -4,6 +4,16 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 
+import plotly.io as pio
+
+pio.templates["custom"] = pio.templates["plotly_dark"]
+
+pio.templates["custom"].layout.colorway = [
+    "#1E90FF",  # blue
+    "red",  # sky blue
+]
+
+pio.templates.default = "custom"
 # PAGE AND SIDEBAR CONFIG
 st.markdown("""
 <style>
@@ -111,7 +121,7 @@ df['toss_and_match_win'] = df['toss_winner'] == df['winner']
 toss_win_percentage = df['toss_and_match_win'].mean() * 100
 col1, col2, col3 = st.columns([2,2,2])
 
-# ---------------- PIE CHART ---------------- #
+# PIE CHART
 with col1:
     st.markdown("#### Toss Winner Match Success")
     fig = go.Figure(data=[
@@ -257,17 +267,30 @@ st.plotly_chart(fig5, use_container_width=True)
 st.info("- Eden Gardens has hosted the highest number of IPL matches, making it one of the league's most iconic venues.")
 st.divider()
 
-# QUICK INSIGHTS
-st.subheader("Tournament Summary")
+# KEY INSIGHTS
 
-st.success(f"""
-- Teams winning the toss won {toss_win_percentage}% matches overall.
-- IPL has evolved into a high-scoring tournament.
-- Virat Kohli dominates batting records.
-- Bowlers with variations perform best in T20 cricket.
-- Historic venues continue to host maximum matches.
-- Chasing trends dominate modern IPL seasons.
-""")
+st.subheader(" Comprehensive IPL Tournament Insights")
 
-st.divider()
+col1, col2 = st.columns(2)
+
+with col1:
+    st.markdown("""
+    ### Batting & Strategic Milestones
+
+    * **The 9K Run Benchmark:** **Virat Kohli** stands as the undisputed all-time top run-scorer, being the first player in IPL history to surpass the **9,050 runs** milestone while maintaining an elite average of **40.04**.
+
+    * **Chasing Dominance:** Modern T20 tactical shifts are highly evident in captaincy mindsets. Across **1,218 total matches**, teams opted to **Field First 803 times** compared to just **415 Bat First decisions**. This heavy 2-to-1 bias highlights a league-wide reliance on chasing analytics and evening dew advantages.
+
+    * **Toss Neutrality:** Despite the strong preference for chasing, the actual **Toss Winner Match Success rate sits at a highly balanced 50.2%**. This statistically demonstrates that winning the coin flip does not guarantee match outcomes, preserving core competitive balance.
+    """)
+
+with col2:
+    st.markdown("""
+    ### Bowling Efficiency & Venue Density
+
+    * **Spin vs. Pace Elite:** The bowling charts confirm **Yuzvendra Chahal** as the all-time leading wicket-taker with **238 scalps**, closely chased by **Bhuvneshwar Kumar at 231 wickets**. This highlights a fascinating duel between elite wrist-spin and master powerplay swing.
+
+    * **The Legendary Venues:** Traditional cricketing strongholds dominate the tournament's history. **Eden Gardens leads with 77 matches hosted**, followed directly by **Wankhede Stadium at 73 matches**, serving as the primary cultural and competitive hubs of the tournament.
+    """)
+
 
