@@ -198,7 +198,9 @@ fig3 = px.bar(
 )
 
 st.plotly_chart(fig3, use_container_width=True)
-
+st.info(
+    "- Virat Kohli dominates the IPL run charts, highlighting his long-term consistency and elite batting performance."
+)
 st.divider()
 
 # TOP BOWLERS
@@ -256,18 +258,15 @@ st.info("- Eden Gardens has hosted the highest number of IPL matches, making it 
 st.divider()
 
 # QUICK INSIGHTS
-st.subheader("Quick Insights")
+st.subheader("Tournament Summary")
 
 st.success(f"""
-• Teams winning the toss won {toss_win_percentage}% matches overall.
-
-• Strong powerplay starts often create match momentum.
-
-• Death overs heavily influence final match outcomes.
-
-• Certain venues strongly favor chasing teams.
-
-• Consistent teams dominate across all match phases.
+- Teams winning the toss won {toss_win_percentage}% matches overall.
+- IPL has evolved into a high-scoring tournament.
+- Virat Kohli dominates batting records.
+- Bowlers with variations perform best in T20 cricket.
+- Historic venues continue to host maximum matches.
+- Chasing trends dominate modern IPL seasons.
 """)
 
 st.divider()
