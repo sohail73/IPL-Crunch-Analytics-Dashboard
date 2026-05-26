@@ -39,7 +39,7 @@ st.set_page_config(
 #LOAD DATASET
 @st.cache_data
 def load_data():
-    return pd.read_csv('data/ipl_crunch_data.csv')
+    return pd.read_csv('data/clean_ipl_data.csv')
 df = load_data()
 
 
@@ -56,29 +56,12 @@ venue intelligence, and advanced insights.
 st.markdown('Data Source: 2008 - May 2026')
 
 st.divider()
-# Data Preprocessing
+
 #total matches
 total_matches = match_level['match_id'].nunique()
-
-#total teams
-team_cleaner={
-    'Rising Pune Supergiants': 'Rising Pune Supergiant',
-    'Delhi Daredevils': 'Delhi Capitals',
-    'Kings XI Punjab': 'Punjab Kings',
-    'Royal Challengers Bangalore': 'Royal Challengers Bengaluru'
-}
-df['team1']=df['team1'].replace(team_cleaner)
-df['team2']=df['team2'].replace(team_cleaner)
 total_teams = len(pd.unique(df[['team1','team2']].stack().drop_duplicates()))
 
 # total seasons
-season_map = {
-    '2007/08': 2008,
-    '2009/10': 2010,
-    '2020/21': 2020
-}
-df['season'] = df['season'].replace(season_map)
-df['season'] =df['season'].astype(int)
 total_seasons = len(sorted(df['season'].unique()))
 
 # highest score
@@ -87,28 +70,16 @@ highest_score = df.groupby(['match_id', 'batting_team'])['runs_total'].sum().max
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    st.metric(
-        "Total Matches",
-        total_matches
-    )
+    st.metric("Total Matches",total_matches)
 
 with col2:
-    st.metric(
-        "Total Teams",
-        total_teams
-    )
+    st.metric("Total Teams",total_teams)
 
 with col3:
-    st.metric(
-        "Total Seasons",
-        total_seasons
-    )
+    st.metric("Total Seasons",total_seasons)
 
 with col4:
-    st.metric(
-        "Highest Score",
-        highest_score
-    )
+    st.metric("Highest Score",highest_score)
 st.divider()
 
 # TOSS IMPACT OVERVIEW
@@ -123,9 +94,7 @@ with col1:
     st.markdown("#### Toss Winner Match Success")
     matches_df = df[['match_id', 'toss_winner', 'toss_decision', 'winner']].drop_duplicates()
 
-    matches_df['Toss_Result'] = matches_df.apply(
-        lambda row: 'Toss Winner Won' if row['toss_winner'] == row['winner'] else 'Toss Winner Lost', axis=1
-    )
+    matches_df['Toss_Result'] = matches_df.apply(lambda row: 'Toss Winner Won' if row['toss_winner'] == row['winner'] else 'Toss Winner Lost', axis=1)
 
     fig_toss_pie = px.pie(
         matches_df,
@@ -168,17 +137,14 @@ with col2:
 
     st.plotly_chart(fig2, use_container_width=True)
 
-# ---------------- PLAYER CARD ---------------- #
+# PLAYER CARD
 with col3:
 
     st.markdown("#### Top Run Scorer")
-
     c1, c2 = st.columns([2,1])
 
     with c1:
-        st.image(
-            "virat.png"
-        )
+        st.image("virat.png")
 
     with c2:
         st.markdown("### VIRAT KOHLI")
@@ -190,33 +156,21 @@ with col3:
 col_in1, col_in2, col_in3 = st.columns(3)
 
 with col_in1:
-    st.info(
-        "- Winning the toss does not guarantee match victory. IPL matches remain highly competitive regardless of toss outcome."
-    )
+    st.info("- Winning the toss does not guarantee match victory. IPL matches remain highly competitive regardless of toss outcome.")
 
 with col_in2:
-    st.success(
-        "- Teams mostly prefer bowling first, showing a strong chasing trend in modern IPL seasons."
-    )
+    st.success("- Teams mostly prefer bowling first, showing a strong chasing trend in modern IPL seasons.")
 
 with col_in3:
-    st.warning(
-        "- Virat Kohli remains the highest run scorer in IPL history with remarkable consistency across seasons."
-    )
+    st.warning("- Virat Kohli remains the highest run scorer in IPL history with remarkable consistency across seasons.")
 
 st.divider()
 
 # TOP BATTERS
+
 st.subheader("Top 10 IPL Run Scorers")
 
-batter_stats = (
-    df.groupby('batter')
-    .agg(
-        total_runs=('runs_batter', 'sum'),
-        matches_batted=('match_id', 'nunique'),
-    )
-    .reset_index()
-)
+batter_stats = (df.groupby('batter').agg(total_runs=('runs_batter', 'sum'),matches_batted=('match_id', 'nunique'),).reset_index())
 
 top_scorers_df = batter_stats.sort_values(by='total_runs', ascending=False).head(10)
 
@@ -226,33 +180,23 @@ fig3 = px.bar(
     y='total_runs',
     labels={'batter': 'Batsman', 'total_runs': 'Total Runs'},
     title='Top 10 IPL Run Scorers',
-    color='total_runs',  # Runs ke number ke hisab se colour badlega
-    color_continuous_scale='Plasma',  # Isme ek pyara orange-purple gradient milega
+    color='total_runs',
+    color_continuous_scale='Plasma',
 )
 
 st.plotly_chart(fig3, use_container_width=True)
-st.info(
-    "- Virat Kohli dominates the IPL run charts, highlighting his long-term consistency and elite batting performance."
-)
+
+st.info("- Virat Kohli dominates the IPL run charts, highlighting his long-term consistency and elite batting performance.")
 st.divider()
 
 # TOP BOWLERS
 st.subheader("Top IPL Wicket Takers")
 
-
-bowler_wickets = [
-    'caught', 'bowled', 'lbw', 'caught and bowled', 'stumped', 'hit wicket'
-]
+bowler_wickets = ['caught', 'bowled', 'lbw', 'caught and bowled', 'stumped', 'hit wicket']
 df_wickets = df[df['wicket_kind'].isin(bowler_wickets)]
 
 
-top_bowlers_df = (
-    df_wickets.groupby('bowler')
-    .size()
-    .reset_index(name='Wickets')  # Yahan ye DataFrame ban gaya
-    .sort_values(by='Wickets', ascending=False)
-    .head(10)
-)
+top_bowlers_df = (df_wickets.groupby('bowler').size().reset_index(name='Wickets').sort_values(by='Wickets', ascending=False).head(10))
 
 fig4 = px.bar(
     top_bowlers_df,
@@ -260,11 +204,12 @@ fig4 = px.bar(
     y='Wickets',
     labels={'bowler': 'Bowler', 'Wickets': 'Total Wickets'},
     title='Top 10 IPL Wicket Takers',
-    color='Wickets',  # Wickets ke number ke hisab se colour change hoga
-    color_continuous_scale='Viridis',  # 'Viridis' ya 'Plasma' scale use kar sakte hain
+    color='Wickets',
+    color_continuous_scale='Viridis',
 )
 
 st.plotly_chart(fig4, use_container_width=True)
+
 st.info("""
 - Spin bowlers and death-over specialists dominate the IPL wicket charts, showing the importance of variation and consistency in T20 cricket
 - Yuzvendra Chahal leads the wicket charts, proving the long-term impact  of quality spin bowling in IPL history
@@ -275,40 +220,7 @@ st.divider()
 
 st.subheader("Top IPL Venues")
 
-def clean_venue(venue):
-    v = str(venue).lower().strip()
-    if 'wankhede' in v:
-        return 'Wankhede Stadium (Mumbai)'
-    elif 'eden gardens' in v:
-        return 'Eden Gardens (Kolkata)'
-    elif 'chinnaswamy' in v:
-        return 'M. Chinnaswamy Stadium (Bengaluru)'
-    elif 'chidambaram' in v or 'chepauk' in v:
-        return 'MA Chidambaram Stadium (Chennai)'
-    elif 'feroz shah kotla' in v or 'arun jaitley' in v:
-        return 'Arun Jaitley Stadium (Delhi)'
-    elif 'rajiv gandhi' in v or 'uppal' in v:
-        return 'Rajiv Gandhi Intl Stadium (Hyderabad)'
-    elif 'sawai mansingh' in v:
-        return 'Sawai Mansingh Stadium (Jaipur)'
-    elif 'punjab cricket' in v or 'mohali' in v or 'is bindra' in v:
-        return 'IS Bindra PCA Stadium (Mohali)'
-    elif 'narendra modi' in v or 'motera' in v or 'sardar patel' in v:
-        return 'Narendra Modi Stadium (Ahmedabad)'
-    elif 'dubai' in v:
-        return 'Dubai International Stadium'
-    else:
-        return venue
-
-df['cleaned_venue'] = df['venue'].apply(clean_venue)
-
-top_venues_df = (
-    df.groupby('cleaned_venue')['match_id']
-    .nunique()
-    .reset_index(name='Matches')
-    .sort_values(by='Matches', ascending=False)
-    .head(10)
-)
+top_venues_df = (df.groupby('cleaned_venue')['match_id'].nunique().reset_index(name='Matches').sort_values(by='Matches', ascending=False).head(10))
 fig5 = px.bar(
     top_venues_df,
     x='cleaned_venue',
@@ -318,8 +230,6 @@ fig5 = px.bar(
     color='Matches',
     color_continuous_scale='Cividis',
 )
-
-
 st.plotly_chart(fig5, use_container_width=True)
 
 st.info("- Wankhede Stadium (Mumbai) has hosted the highest number of IPL matches, making it one of the league's most iconic venues.")

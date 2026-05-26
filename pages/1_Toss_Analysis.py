@@ -78,7 +78,6 @@ match_level = df.drop_duplicates(subset='match_id').copy()
 
 # PAGE TITLE
 st.title("Toss Impact Analysis")
-
 st.markdown("""
 Analyze how toss decisions influence
 match outcomes across IPL seasons.
@@ -125,6 +124,7 @@ with col3:
 st.divider()
 
 # TOSS WIN VS MATCH WIN
+
 st.subheader("Toss Winner vs Match Winner")
 
 col1, col2 = st.columns(2)
@@ -150,7 +150,7 @@ with col1:
     st.plotly_chart(fig1, use_container_width=True)
 
 with col2:
-    # ---- FIX 2: Safe handling of Bar Chart dataframe mapping to prevent ValueError ----
+    # Safe handling of Bar Chart dataframe mapping to prevent ValueError
     if not toss_decision_counts.empty:
         toss_df = toss_decision_counts.reset_index()
         toss_df.columns = ['Decision', 'Count']
@@ -190,10 +190,7 @@ st.markdown("""
 The breakdown below ranks venues based on the match success rate of the team winning the toss.
 """)
 
-venue_toss_df = match_level.groupby('cleaned_venue').agg(
-    Total_Matches=('match_id', 'nunique'),
-    Toss_And_Match_Wins=('toss_and_match_win', 'sum')
-).reset_index()
+venue_toss_df = match_level.groupby('cleaned_venue').agg(Total_Matches=('match_id', 'nunique'),Toss_And_Match_Wins=('toss_and_match_win', 'sum')).reset_index()
 
 venue_toss_df = venue_toss_df[venue_toss_df['Total_Matches'] >= 5]
 
@@ -237,7 +234,7 @@ st.divider()
 st.subheader("Season-wise Toss Impact")
 
 if total_matches > 0:
-    # ---- FIX 3: Groupby without using .apply lambda loop for structural stability ----
+    # Group by without using .apply lambda loop for structural stability
     season_toss = match_level.groupby('season').agg(
         Total_Matches=('match_id', 'nunique'),
         Toss_And_Match_Wins=('toss_and_match_win', 'sum')
@@ -273,6 +270,7 @@ else:
 st.divider()
 
 # TEAM-WISE TOSS PERFORMANCE
+
 team_cleaner = {
     'Rising Pune Supergiants': 'Rising Pune Supergiant',
     'Delhi Daredevils': 'Delhi Capitals',
@@ -286,10 +284,7 @@ match_level['toss_match_win'] = match_level['toss_winner'] == match_level['winne
 st.subheader("Teams Converting Toss Wins into Match Wins")
 
 # Efficient groupby alternative to keep indexing structural integrity clean
-team_toss_df = match_level.groupby('toss_winner').agg(
-    Total_Toss_Wins=('match_id', 'nunique'),
-    Toss_Matches_Won=('toss_match_win', 'sum')
-).reset_index()
+team_toss_df = match_level.groupby('toss_winner').agg(Total_Toss_Wins=('match_id', 'nunique'),Toss_Matches_Won=('toss_match_win', 'sum')).reset_index()
 
 if not team_toss_df.empty:
     team_toss_df['Success %'] = (team_toss_df['Toss_Matches_Won'] / team_toss_df['Total_Toss_Wins']) * 100
@@ -315,6 +310,7 @@ else:
 st.divider()
 
 # INSIGHTS
+
 st.subheader("Key Insights")
 
 if bat_first_wins > field_first_wins:
