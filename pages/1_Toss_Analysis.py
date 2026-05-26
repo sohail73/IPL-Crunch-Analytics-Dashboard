@@ -1,3 +1,4 @@
+from Home import load_data
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -25,53 +26,7 @@ st.set_page_config(
     layout="wide"
 )
 
-
-# LOAD DATA
-@st.cache_data
-def load_data():
-    return pd.read_csv('data/ipl_crunch_data.csv')
-
-
 df = load_data()
-
-
-# Milte-julte naamo ko merge karne ke liye cleaning map
-def clean_venue(venue):
-    v = str(venue).lower().strip()
-    if 'wankhede' in v:
-        return 'Wankhede Stadium (Mumbai)'
-    elif 'eden gardens' in v:
-        return 'Eden Gardens (Kolkata)'
-    elif 'chinnaswamy' in v:
-        return 'M. Chinnaswamy Stadium (Bengaluru)'
-    elif 'chidambaram' in v or 'chepauk' in v:
-        return 'MA Chidambaram Stadium (Chennai)'
-    elif 'feroz shah kotla' in v or 'arun jaitley' in v:
-        return 'Arun Jaitley Stadium (Delhi)'
-    elif 'rajiv gandhi' in v or 'uppal' in v:
-        return 'Rajiv Gandhi Intl Stadium (Hyderabad)'
-    elif 'sawai mansingh' in v:
-        return 'Sawai Mansingh Stadium (Jaipur)'
-    elif 'punjab cricket' in v or 'mohali' in v or 'is bindra' in v:
-        return 'IS Bindra PCA Stadium (Mohali)'
-    elif 'narendra modi' in v or 'motera' in v or 'sardar patel' in v:
-        return 'Narendra Modi Stadium (Ahmedabad)'
-    elif 'dubai' in v:
-        return 'Dubai International Stadium'
-    else:
-        return venue
-
-df['cleaned_venue'] = df['venue'].apply(clean_venue)
-# ---- FIX 1: Clean season mapping BEFORE dropping duplicates and filtering ----
-season_map = {
-    '2007/08': 2008,
-    '2009/10': 2010,
-    '2020/21': 2020
-}
-df['season'] = df['season'].replace(season_map)
-# Safe string extraction for any remaining slash values like '2024/25'
-df['season'] = df['season'].astype(str).str.split('/').str[0]
-df['season'] = pd.to_numeric(df['season'], errors='coerce').fillna(2008).astype(int)
 
 # MATCH LEVEL DATA
 match_level = df.drop_duplicates(subset='match_id').copy()
@@ -87,10 +42,7 @@ st.divider()
 # PAGE FILTERS
 venues = sorted(match_level['cleaned_venue'].dropna().unique())
 
-selected_venue = st.selectbox(
-    "Select Venue",
-    ["All"] + list(venues)
-)
+selected_venue = st.selectbox("Select Venue",["All"] + list(venues))
 
 # APPLY VENUE FILTER (Using the cleaned column consistently)
 if selected_venue != "All":
@@ -270,20 +222,11 @@ else:
 st.divider()
 
 # TEAM-WISE TOSS PERFORMANCE
-
-team_cleaner = {
-    'Rising Pune Supergiants': 'Rising Pune Supergiant',
-    'Delhi Daredevils': 'Delhi Capitals',
-    'Kings XI Punjab': 'Punjab Kings',
-    'Royal Challengers Bangalore': 'Royal Challengers Bengaluru'
-}
-match_level['toss_winner'] = match_level['toss_winner'].replace(team_cleaner)
-match_level['winner'] = match_level['winner'].replace(team_cleaner)
 match_level['toss_match_win'] = match_level['toss_winner'] == match_level['winner']
 
 st.subheader("Teams Converting Toss Wins into Match Wins")
 
-# Efficient groupby alternative to keep indexing structural integrity clean
+# Efficient group by alternative to keep indexing structural integrity clean
 team_toss_df = match_level.groupby('toss_winner').agg(Total_Toss_Wins=('match_id', 'nunique'),Toss_Matches_Won=('toss_match_win', 'sum')).reset_index()
 
 if not team_toss_df.empty:
@@ -311,35 +254,53 @@ st.divider()
 
 # INSIGHTS
 
-st.subheader("Key Insights")
+st.subheader("Data-Driven Insights & Strategic Takeaways")
 
-if bat_first_wins > field_first_wins:
-    pref_statement = f"captains prefer to **Bat First** after winning the toss at this venue ({bat_first_wins} times)."
+if total_matches > 0:
+    # 1. Base Numbers Extraction for Insights
+    top_venue_name = venue_toss_df.iloc[0]['cleaned_venue'] if not venue_toss_df.empty else "N/A"
+    top_venue_pct = venue_toss_df.iloc[0]['Toss Win Match %'] if not venue_toss_df.empty else 0
+
+    preferred_decision = "Fielding First" if field_first_wins > bat_first_wins else "Batting First"
+    preferred_percentage = (max(field_first_wins, bat_first_wins) / (bat_first_wins + field_first_wins)) * 100 if (
+                                                                                                                              bat_first_wins + field_first_wins) > 0 else 0
+
+    best_conversion_team = team_toss_df.iloc[0]['toss_winner'] if not team_toss_df.empty else "N/A"
+    best_conversion_val = team_toss_df.iloc[0]['Success %'] if not team_toss_df.empty else 0
+
+    # 2. Render Insights Using Streamlit Alert Boxes and Columns
+    ins1, ins2 = st.columns(2)
+
+    with ins1:
+        st.info(f"""
+        ** Overall Toss Advantage Status**
+        - Throughout IPL history under current filters, the team winning the toss wins the match approximately **{toss_win_percentage:.2f}%** of the time. 
+        - This indicates that while the toss provides an edge, match simulation control and tactical execution in crunch overs remain the primary drivers of victory.
+        """)
+
+        st.success(f"""
+        ** Tactical Dominance by Decision**
+        - Captains exhibit a strong structural bias toward **{preferred_decision}**, accounting for **{preferred_percentage:.1f}%** of total toss choices.
+        - In modern T20 formats, tracking wet conditions (dew factor) and chasing patterns heavily shapes this ongoing trend.
+        """)
+
+    with ins2:
+        st.warning(f"""
+        ** Venue Crucial Hotspot**
+        - The toss holds maximum strategic leverage at **{top_venue_name}**, boasting a historic conversion rate of **{top_venue_pct:.1f}%** match wins for the toss winner.
+        - Teams playing here should prioritize analytical adjustments based on pitch variance right at the flip.
+        """)
+
+        st.error(f"""
+        ** Elite Asset Conversion**
+        - **{best_conversion_team}** emerges as the most clinical side, converting **{best_conversion_val:.1f}%** of their toss victories into actual match wins.
+        - This metrics signals superior defensive depth or clinical chasing setups compared to the tournament baseline.
+        """)
+
+    st.markdown("""
+    ---
+    ### Summary:
+    *“The data invalidates the myth that winning the toss guarantees a absolute victory path in the IPL. Instead, it proves that toss luck acts as an **accelerator** rather than a guarantee. High conversion rates are driven heavily by venue dynamics (such as boundary scale and dew patterns) paired with team-specific depth in execution.”*
+    """)
 else:
-    pref_statement = f"captains heavily prefer to **Field First (Chase)** after winning the toss at this venue ({field_first_wins} times)."
-
-if len(team_toss) > 0:
-    top_team = team_toss.index[0]
-    top_team_pct = round(team_toss.values[0], 1)
-    team_statement = f"**{top_team}** has capitalized best on toss advantages in this segment, boasting a Toss-to-Match conversion rate of **{top_team_pct}%**."
-else:
-    team_statement = "Toss conversion analytics are processing based on the applied data filters."
-
-st.success(f"""
-- **Overall Toss Advantage:** Under the **{selected_venue}** filter context, teams winning the toss have a match-winning probability of **{round(toss_win_percentage, 2)}%**. 
-
-- **Captain's Mindset:** According to historical data, {pref_statement}
-
-- **Team Dominance:** {team_statement}
-
-- **Tactical Shift:** Due to modern dynamic ground dimensions, dew factors, and tactical shifts in the ongoing IPL 2026 season, the dominance of chasing teams has risen significantly.
-""")
-
-st.divider()
-
-# CONCLUSION
-st.subheader("Conclusion")
-st.markdown(f"""
-While toss advantages definitely play a measurable role at **{selected_venue}**, they are rarely the sole deciding factor of a fixture. 
-On-field execution, powerplay bowling lengths, boundary defense metrics, and tactical adaptability ultimately dictate final match outcomes.
-""")
+    st.info("Please adjust filters to generate strategic match insights.")
