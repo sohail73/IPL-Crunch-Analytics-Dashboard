@@ -44,9 +44,7 @@ df = load_data()
 
 
 # MATCH LEVEL DATA
-match_level = df.drop_duplicates(
-    subset='match_id'
-)
+match_level = df.drop_duplicates(subset='match_id')
 # HEADER
 st.title("IPL Crunch Analytics Dashboard")
 
@@ -55,6 +53,7 @@ Explore IPL trends, match-winning patterns,
 batting dominance, bowling impact,
 venue intelligence, and advanced insights.
 """)
+st.markdown('Data Source: 2008 - May 2026')
 
 st.divider()
 # Data Preprocessing
@@ -83,9 +82,7 @@ df['season'] =df['season'].astype(int)
 total_seasons = len(sorted(df['season'].unique()))
 
 # highest score
-highest_score = df.groupby(
-    ['match_id', 'batting_team']
-)['runs_total'].sum().max()
+highest_score = df.groupby(['match_id', 'batting_team'])['runs_total'].sum().max()
 
 col1, col2, col3, col4 = st.columns(4)
 
@@ -124,37 +121,49 @@ col1, col2, col3 = st.columns([2,2,2])
 # PIE CHART
 with col1:
     st.markdown("#### Toss Winner Match Success")
-    fig = go.Figure(data=[
-        go.Pie(
-            labels=[
-                'Won Match',
-                'Lost Match'
-            ],
-            values=[
-                toss_win_percentage,
-                100 - toss_win_percentage
-            ],
-            hole=0.45
-        )
-    ])
+    matches_df = df[['match_id', 'toss_winner', 'toss_decision', 'winner']].drop_duplicates()
 
-    st.plotly_chart(fig, use_container_width=True)
+    matches_df['Toss_Result'] = matches_df.apply(
+        lambda row: 'Toss Winner Won' if row['toss_winner'] == row['winner'] else 'Toss Winner Lost', axis=1
+    )
 
+    fig_toss_pie = px.pie(
+        matches_df,
+        names='Toss_Result',
+        hole=0.5,
+        color='Toss_Result',
 
-# ---------------- BAR CHART ---------------- #
+        color_discrete_map={'Toss Winner Won': '#00E6B4', 'Toss Winner Lost': '#d62728'}
+    )
+
+    fig_toss_pie.update_traces(
+        textinfo='percent+value',
+        hovertemplate="<b>%{label}</b><br>Matches: %{value}<br>Percentage: %{percent}<extra></extra>"
+    )
+
+    st.plotly_chart(fig_toss_pie, use_container_width=True)
+
+# BAR CHART
 with col2:
     st.markdown("#### Toss Decisions")
-    toss_decision = match_level[
-        'toss_decision'
-    ].value_counts()
+    toss_decision = match_level['toss_decision'].value_counts()
 
     fig2 = px.bar(
         x=toss_decision.index,
         y=toss_decision.values,
-        labels={
-            'x': 'Decision',
-            'y': 'Count'
-        }
+        labels={'x': 'Decision', 'y': 'Count'},
+        color=toss_decision.index,
+        color_discrete_sequence=[
+            '#00E6B4',
+            '#d62728',
+        ],
+    )
+
+    fig2.update_traces(texttemplate='%{y}', textposition='outside')
+    fig2.update_layout(
+        template='plotly_white',
+        showlegend=False,
+        yaxis_range=[0, max(toss_decision.values) + 100],
     )
 
     st.plotly_chart(fig2, use_container_width=True)
@@ -174,37 +183,51 @@ with col3:
     with c2:
         st.markdown("### VIRAT KOHLI")
         st.markdown("### 9050 Runs")
-        st.markdown("Matches: 269")
+        st.markdown("Matches: 268")
         st.markdown("Average: 40.04")
 
 #insights
-st.subheader("Insight")
-st.info("""
-- Winning the toss does not guarantee match victory. IPL matches remain highly competitive regardless of toss outcome.
-- Teams mostly prefer bowling first, showing a strong chasing trend in modern IPL seasons.
-- Virat Kohli remains the highest run scorer in IPL history with remarkable consistency across seasons.
-""")
+col_in1, col_in2, col_in3 = st.columns(3)
+
+with col_in1:
+    st.info(
+        "- Winning the toss does not guarantee match victory. IPL matches remain highly competitive regardless of toss outcome."
+    )
+
+with col_in2:
+    st.success(
+        "- Teams mostly prefer bowling first, showing a strong chasing trend in modern IPL seasons."
+    )
+
+with col_in3:
+    st.warning(
+        "- Virat Kohli remains the highest run scorer in IPL history with remarkable consistency across seasons."
+    )
 
 st.divider()
 
 # TOP BATTERS
 st.subheader("Top 10 IPL Run Scorers")
 
-top_batters = df.groupby(
-    'batter'
-)['runs_batter'].sum().sort_values(
-    ascending=False
-).head(10)
+batter_stats = (
+    df.groupby('batter')
+    .agg(
+        total_runs=('runs_batter', 'sum'),
+        matches_batted=('match_id', 'nunique'),
+    )
+    .reset_index()
+)
+
+top_scorers_df = batter_stats.sort_values(by='total_runs', ascending=False).head(10)
 
 fig3 = px.bar(
-    top_batters,
-    x=top_batters.values,
-    y=top_batters.index,
-    orientation='h',
-    labels={
-        'x': 'Runs',
-        'y': 'Batter'
-    }
+    top_scorers_df,
+    x='batter',
+    y='total_runs',
+    labels={'batter': 'Batsman', 'total_runs': 'Total Runs'},
+    title='Top 10 IPL Run Scorers',
+    color='total_runs',  # Runs ke number ke hisab se colour badlega
+    color_continuous_scale='Plasma',  # Isme ek pyara orange-purple gradient milega
 )
 
 st.plotly_chart(fig3, use_container_width=True)
@@ -216,24 +239,29 @@ st.divider()
 # TOP BOWLERS
 st.subheader("Top IPL Wicket Takers")
 
-wickets = df[
-    df['wicket_kind'].notna()
-]
 
-top_bowlers = wickets.groupby(
-    'bowler'
-)['wicket_player_out'].count().sort_values(
-    ascending=False
-).head(10)
+bowler_wickets = [
+    'caught', 'bowled', 'lbw', 'caught and bowled', 'stumped', 'hit wicket'
+]
+df_wickets = df[df['wicket_kind'].isin(bowler_wickets)]
+
+
+top_bowlers_df = (
+    df_wickets.groupby('bowler')
+    .size()
+    .reset_index(name='Wickets')  # Yahan ye DataFrame ban gaya
+    .sort_values(by='Wickets', ascending=False)
+    .head(10)
+)
 
 fig4 = px.bar(
-    top_bowlers,
-    x=top_bowlers.index,
-    y=top_bowlers.values,
-    labels={
-        'x': 'Bowler',
-        'y': 'Wickets'
-    }
+    top_bowlers_df,
+    x='bowler',
+    y='Wickets',
+    labels={'bowler': 'Bowler', 'Wickets': 'Total Wickets'},
+    title='Top 10 IPL Wicket Takers',
+    color='Wickets',  # Wickets ke number ke hisab se colour change hoga
+    color_continuous_scale='Viridis',  # 'Viridis' ya 'Plasma' scale use kar sakte hain
 )
 
 st.plotly_chart(fig4, use_container_width=True)
@@ -247,50 +275,80 @@ st.divider()
 
 st.subheader("Top IPL Venues")
 
-venue_counts = match_level[
-    'venue'
-].value_counts().head(10)
+def clean_venue(venue):
+    v = str(venue).lower().strip()
+    if 'wankhede' in v:
+        return 'Wankhede Stadium (Mumbai)'
+    elif 'eden gardens' in v:
+        return 'Eden Gardens (Kolkata)'
+    elif 'chinnaswamy' in v:
+        return 'M. Chinnaswamy Stadium (Bengaluru)'
+    elif 'chidambaram' in v or 'chepauk' in v:
+        return 'MA Chidambaram Stadium (Chennai)'
+    elif 'feroz shah kotla' in v or 'arun jaitley' in v:
+        return 'Arun Jaitley Stadium (Delhi)'
+    elif 'rajiv gandhi' in v or 'uppal' in v:
+        return 'Rajiv Gandhi Intl Stadium (Hyderabad)'
+    elif 'sawai mansingh' in v:
+        return 'Sawai Mansingh Stadium (Jaipur)'
+    elif 'punjab cricket' in v or 'mohali' in v or 'is bindra' in v:
+        return 'IS Bindra PCA Stadium (Mohali)'
+    elif 'narendra modi' in v or 'motera' in v or 'sardar patel' in v:
+        return 'Narendra Modi Stadium (Ahmedabad)'
+    elif 'dubai' in v:
+        return 'Dubai International Stadium'
+    else:
+        return venue
 
-fig5 = px.bar(
-    venue_counts,
-    x=venue_counts.values,
-    y=venue_counts.index,
-    orientation='h',
-    labels={
-        'x': 'Matches Hosted',
-        'y': 'Venue'
-    }
+df['cleaned_venue'] = df['venue'].apply(clean_venue)
+
+top_venues_df = (
+    df.groupby('cleaned_venue')['match_id']
+    .nunique()
+    .reset_index(name='Matches')
+    .sort_values(by='Matches', ascending=False)
+    .head(10)
 )
+fig5 = px.bar(
+    top_venues_df,
+    x='cleaned_venue',
+    y='Matches',
+    labels={'cleaned_venue': 'Stadium', 'Matches': 'Matches Played'},
+    title='Top 10 IPL Venues by Matches Played',
+    color='Matches',
+    color_continuous_scale='Cividis',
+)
+
 
 st.plotly_chart(fig5, use_container_width=True)
 
-st.info("- Eden Gardens has hosted the highest number of IPL matches, making it one of the league's most iconic venues.")
+st.info("- Wankhede Stadium (Mumbai) has hosted the highest number of IPL matches, making it one of the league's most iconic venues.")
 st.divider()
 
 # KEY INSIGHTS
 
-st.subheader(" Comprehensive IPL Tournament Insights")
+st.markdown("### Insights")
 
-col1, col2 = st.columns(2)
+col_in1, col_in2, col_in3 = st.columns(3)
 
-with col1:
-    st.markdown("""
-    ### Batting & Strategic Milestones
+with col_in1:
+    st.info(
+        "** Batting Dominance**\n\n"
+        "**Virat Kohli** leads the all-time charts with **9,050 runs** in 268 innings, "
+        "maintaining a stellar average of **40.04**. He remains the ultimate run-machine of IPL."
+    )
 
-    * **The 9K Run Benchmark:** **Virat Kohli** stands as the undisputed all-time top run-scorer, being the first player in IPL history to surpass the **9,050 runs** milestone while maintaining an elite average of **40.04**.
+with col_in2:
+    st.success(
+        "** Bowling King**\n\n"
+        "**Yuzvendra Chahal** sits right at the top as the leading wicket-taker with **229 wickets** in 181 matches. "
+        "His leg-spin has been the most effective weapon in IPL history."
+    )
 
-    * **Chasing Dominance:** Modern T20 tactical shifts are highly evident in captaincy mindsets. Across **1,218 total matches**, teams opted to **Field First 803 times** compared to just **415 Bat First decisions**. This heavy 2-to-1 bias highlights a league-wide reliance on chasing analytics and evening dew advantages.
-
-    * **Toss Neutrality:** Despite the strong preference for chasing, the actual **Toss Winner Match Success rate sits at a highly balanced 50.2%**. This statistically demonstrates that winning the coin flip does not guarantee match outcomes, preserving core competitive balance.
-    """)
-
-with col2:
-    st.markdown("""
-    ### Bowling Efficiency & Venue Density
-
-    * **Spin vs. Pace Elite:** The bowling charts confirm **Yuzvendra Chahal** as the all-time leading wicket-taker with **238 scalps**, closely chased by **Bhuvneshwar Kumar at 231 wickets**. This highlights a fascinating duel between elite wrist-spin and master powerplay swing.
-
-    * **The Legendary Venues:** Traditional cricketing strongholds dominate the tournament's history. **Eden Gardens leads with 77 matches hosted**, followed directly by **Wankhede Stadium at 73 matches**, serving as the primary cultural and competitive hubs of the tournament.
-    """)
-
+with col_in3:
+    st.warning(
+        "** The Toss Trend **\n\n"
+        "Teams strongly prefer chasing, electing to **Field First in ~66%** of matches. "
+        "However, winning the toss only gives a minor edge, with a match win success rate of **50.49%**."
+    )
 
