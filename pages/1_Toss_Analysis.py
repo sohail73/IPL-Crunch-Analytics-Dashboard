@@ -273,26 +273,26 @@ if total_matches > 0:
 
     with ins1:
         st.info(f"""
-        ** Overall Toss Advantage Status**
+        **Overall Toss Advantage Status**
         - Throughout IPL history under current filters, the team winning the toss wins the match approximately **{toss_win_percentage:.2f}%** of the time. 
         - This indicates that while the toss provides an edge, match simulation control and tactical execution in crunch overs remain the primary drivers of victory.
         """)
 
         st.success(f"""
-        ** Tactical Dominance by Decision**
+        **Tactical Dominance by Decision**
         - Captains exhibit a strong structural bias toward **{preferred_decision}**, accounting for **{preferred_percentage:.1f}%** of total toss choices.
         - In modern T20 formats, tracking wet conditions (dew factor) and chasing patterns heavily shapes this ongoing trend.
         """)
 
     with ins2:
         st.warning(f"""
-        ** Venue Crucial Hotspot**
+        **Venue Crucial Hotspot**
         - The toss holds maximum strategic leverage at **{top_venue_name}**, boasting a historic conversion rate of **{top_venue_pct:.1f}%** match wins for the toss winner.
         - Teams playing here should prioritize analytical adjustments based on pitch variance right at the flip.
         """)
 
         st.error(f"""
-        ** Elite Asset Conversion**
+        **Elite Asset Conversion**
         - **{best_conversion_team}** emerges as the most clinical side, converting **{best_conversion_val:.1f}%** of their toss victories into actual match wins.
         - This metrics signals superior defensive depth or clinical chasing setups compared to the tournament baseline.
         """)
